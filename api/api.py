@@ -1,6 +1,16 @@
 from flask import Flask, request
 
-app = Flask(__name__)
+
+def create_app():
+    '''
+    The initialization function used to start the API.
+    '''
+    app = Flask(__name__)
+    return app
+
+
+# has to be top-level or we can't use the @app.route decorator
+app = create_app()
 
 
 @app.route('/hello')
@@ -11,3 +21,7 @@ def default_endpoint():
     '''
     name = request.args.get('name', default='stranger')
     return 'Hello {}!'.format(name)
+
+
+if __name__ == '__main__':
+    app.run()
