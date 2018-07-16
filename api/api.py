@@ -3,33 +3,10 @@ from datetime import datetime
 from flask import Flask, request
 
 
-DB_CON = None
-
-
-def create_app(db_uri):
-    '''
-    The initialization function used to start the API.
-    '''
-    app = Flask(__name__)
-    app.config['db'] = db_uri
-
-    # create the table we need if it doesn't already exist
-    con = sqlalchemy.create_engine(db_uri).connect()
-    con.execute('''
-        CREATE TABLE IF NOT EXISTS logs (
-            -- primary key is the default autoincremented rowid in this case
-            timestamp REAL NOT NULL,
-            user TEXT NOT NULL,
-            ip TEXT NOT NULL
-        );
-    ''')
-    con.close()
-
-    return app
-
-
 # has to be top-level or we can't use the @app.route decorator
-app = create_app('sqlite:///access_log.db')
+app = Flask(__name__)
+app.config['db'] = 'sqlite:///access_log.db'
+db = None
 
 
 @app.route('/hello')
@@ -41,7 +18,6 @@ def default_endpoint():
     '''
     name = request.args.get('name', default='stranger')
 
-    # log the access in our database for later analysis
     get_db().execute(
         'INSERT INTO logs VALUES (:timestamp, :user, :ip);',
         timestamp=datetime.now().timestamp(), user=name, ip=request.remote_addr)
@@ -51,16 +27,23 @@ def default_endpoint():
 
 def get_db():
     '''
-    Lazily open a single connection to the database. sqlite only supports
-    single-threaded writes, so we don't want a whole bunch of concurrent db
-    connections.
+    Lazily open a single connection to the database, initializing it if not
+    already setup. sqlite only supports single-threaded writes, so there's no
+    point in having more than one connection (all we're going to do is write).
     '''
-    global DB_CON
-    if DB_CON is None:
-        DB_CON = sqlalchemy.create_engine(app.config['db']).connect()
+    global db
+    if db is None:
+        db = sqlalchemy.create_engine(app.config['db']).connect()
 
-    return DB_CON
+        # on first connection, create the table we need if it doesn't already
+        # exist.
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS logs (
+                -- primary key is the default autoincremented rowid
+                timestamp REAL NOT NULL,
+                user TEXT NOT NULL,
+                ip TEXT NOT NULL
+            );
+        ''')
 
-
-if __name__ == '__main__':
-    app.run()
+    return db
