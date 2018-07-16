@@ -20,7 +20,7 @@ def default_endpoint():
 
     get_db().execute(
         'INSERT INTO logs VALUES (:timestamp, :user, :ip);',
-        timestamp=datetime.now().timestamp(), user=name, ip=request.remote_addr)
+        timestamp=datetime.now(), user=name, ip=request.remote_addr)
 
     return 'Hello {}!'.format(name)
 
@@ -40,7 +40,7 @@ def get_db():
         db.execute('''
             CREATE TABLE IF NOT EXISTS logs (
                 -- primary key is the default autoincremented rowid
-                timestamp REAL NOT NULL,
+                timestamp TEXT NOT NULL,
                 user TEXT NOT NULL,
                 ip TEXT NOT NULL
             );
