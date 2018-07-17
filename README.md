@@ -34,7 +34,8 @@ This package has been tested against every currently supported version of Python
 
 ## To run/use the API
 
-To start the API, execute the following in the `flask-demo` directory:
+To start the API, execute the following in the `flask-demo` directory.
+Use `Ctrl-c` to stop it.
 
 ```bash
 FLASK_APP=api/api.py flask run -h 0.0.0.0

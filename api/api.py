@@ -1,12 +1,42 @@
 import sqlalchemy
 from datetime import datetime
-from flask import Flask, request
+from flask import Flask, request, g
 
 
 # has to be top-level or we can't use the @app.route decorator
 app = Flask(__name__)
 app.config['db'] = 'sqlite:///access_log.db'
-db = None
+engine = None
+
+
+def get_db():
+    # lazily initialize the database
+    global engine
+    if engine is None:
+        engine = sqlalchemy.create_engine(app.config['db'])
+        with engine.connect() as con:
+            con.execute('''
+                CREATE TABLE IF NOT EXISTS logs (
+                    timestamp TEXT PRIMARY KEY,
+                    user TEXT NOT NULL,
+                    ip TEXT NOT NULL
+                );
+            ''')
+
+    if 'db' not in g:
+        g.db = engine.connect()
+
+    return g.db
+
+
+def close_db(_):
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
+
+
+# close the database connection when done like a good citizen
+app.teardown_appcontext(close_db)
 
 
 @app.route('/hello')
@@ -23,27 +53,3 @@ def default_endpoint():
         timestamp=datetime.now(), user=name, ip=request.remote_addr)
 
     return 'Hello {}!'.format(name)
-
-
-def get_db():
-    '''
-    Lazily open a single connection to the database, initializing it if not
-    already setup. sqlite only supports single-threaded writes, so there's no
-    point in having more than one connection (all we're going to do is write).
-    '''
-    global db
-    if db is None:
-        db = sqlalchemy.create_engine(app.config['db']).connect()
-
-        # on first connection, create the table we need if it doesn't already
-        # exist.
-        db.execute('''
-            CREATE TABLE IF NOT EXISTS logs (
-                -- primary key is the default autoincremented rowid
-                timestamp TEXT NOT NULL,
-                user TEXT NOT NULL,
-                ip TEXT NOT NULL
-            );
-        ''')
-
-    return db
