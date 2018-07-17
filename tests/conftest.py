@@ -12,7 +12,8 @@ def client():
     # test database is a random tempfile
     _, tmp = tempfile.mkstemp(suffix='.db')
     api.app.config['db'] = 'sqlite:///' + tmp
-    yield api.app.test_client()
+    with api.app.app_context():
+        yield api.app.test_client()
 
 
 @pytest.fixture(scope='session')
